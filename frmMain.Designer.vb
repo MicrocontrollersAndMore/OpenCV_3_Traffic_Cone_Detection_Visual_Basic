@@ -41,7 +41,7 @@ Partial Class frmMain
         Me.ibMain.Enabled = false
         Me.ibMain.Location = New System.Drawing.Point(3, 44)
         Me.ibMain.Name = "ibMain"
-        Me.ibMain.Size = New System.Drawing.Size(999, 531)
+        Me.ibMain.Size = New System.Drawing.Size(999, 616)
         Me.ibMain.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom
         Me.ibMain.TabIndex = 2
         Me.ibMain.TabStop = false
@@ -60,8 +60,8 @@ Partial Class frmMain
         Me.tableLayoutPanel.Name = "tableLayoutPanel"
         Me.tableLayoutPanel.RowCount = 3
         Me.tableLayoutPanel.RowStyles.Add(New System.Windows.Forms.RowStyle())
-        Me.tableLayoutPanel.RowStyles.Add(New System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 75!))
-        Me.tableLayoutPanel.RowStyles.Add(New System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25!))
+        Me.tableLayoutPanel.RowStyles.Add(New System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 87!))
+        Me.tableLayoutPanel.RowStyles.Add(New System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 13!))
         Me.tableLayoutPanel.Size = New System.Drawing.Size(1005, 757)
         Me.tableLayoutPanel.TabIndex = 3
         '
@@ -94,11 +94,11 @@ Partial Class frmMain
         Me.tableLayoutPanel.SetColumnSpan(Me.txtInfo, 2)
         Me.txtInfo.Dock = System.Windows.Forms.DockStyle.Fill
         Me.txtInfo.Font = New System.Drawing.Font("Courier New", 10.8!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0,Byte))
-        Me.txtInfo.Location = New System.Drawing.Point(3, 581)
+        Me.txtInfo.Location = New System.Drawing.Point(3, 666)
         Me.txtInfo.Multiline = true
         Me.txtInfo.Name = "txtInfo"
         Me.txtInfo.ScrollBars = System.Windows.Forms.ScrollBars.Both
-        Me.txtInfo.Size = New System.Drawing.Size(999, 173)
+        Me.txtInfo.Size = New System.Drawing.Size(999, 88)
         Me.txtInfo.TabIndex = 5
         Me.txtInfo.WordWrap = false
         '

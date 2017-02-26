@@ -21,9 +21,17 @@ Public Class frmMain
     Dim SCALAR_RED As New MCvScalar(0.0, 0.0, 255.0)
     Dim SCALAR_YELLOW As New MCvScalar(0.0, 255.0, 255.0)
 
+    Const MIN_PIXEL_WIDTH As Integer = 10
+    Const MIN_PIXEL_HEIGHT As Integer = 10
+    Const MAX_ASPECT_RATIO As Double = 0.8
+    Const MIN_PIXEL_AREA As Integer = 80
+
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     Private Sub btnOpenFile_Click(sender As Object, e As EventArgs) Handles btnOpenFile.Click
+        
+        'declare and show an OpenFileDialog
         Dim drChosenFile As DialogResult
+        drChosenFile = ofdOpenFile.ShowDialog()                 'open file dialog
 
         If (drChosenFile <> System.Windows.Forms.DialogResult.OK Or ofdOpenFile.FileName = "") Then    'if user chose Cancel or filename is blank . . .
             lblChosenFile.Text = "file not chosen"              'show error message on label
@@ -54,35 +62,36 @@ Public Class frmMain
         CvInvoke.DestroyAllWindows()                        'close any windows that are open from previous button press
 
         ibMain.Image = imgOriginal                 'show original image on main form
-
-
+    
+        'declare and find traffic cones
         Dim trafficCones As New VectorOfVectorOfPoint()
-        trafficCones = findTrafficCones(imgOriginal)
-
+        trafficCones = findTrafficCones(imgOriginal)              'function call
 
         'clone original image so we don't have to alter original image
-        Dim imgOriginalWithCones = imgOriginal.Clone()
+        Dim imgOriginalWithCones As Mat = imgOriginal.Clone()
 
         'draw yellow convex hull around outside of cones
         CvInvoke.DrawContours(imgOriginalWithCones, trafficCones, -1, SCALAR_YELLOW)
 
-
         'for each traffic cone, draw a small green dot at the center of mass of the cone
-
+        For i As Integer = 0 To trafficCones.Size - 1
+            drawGreenDotAtConeCenter(trafficCones(i), imgOriginalWithCones)
+        Next
 
         'update image on form
         ibMain.Image = imgOriginalWithCones
+        CvInvoke.Imshow("imgOriginalWithCones", imgOriginalWithCones)
 
         'write applicable info to text box
-        txtInfo.AppendText("---------------------------------------" + vbCrLf + vbCrLf)
+        txtInfo.AppendText("---------------------------------------" + vbCrLf)
         If (trafficCones Is Nothing) Then
-            txtInfo.AppendText("no traffic cones were found" + vbCrLf + vbCrLf)
+            txtInfo.AppendText("no traffic cones were found" + vbCrLf)
         ElseIf (trafficCones.Size <= 0) Then
-            txtInfo.AppendText("no traffic cones were found" + vbCrLf + vbCrLf)
+            txtInfo.AppendText("no traffic cones were found" + vbCrLf)
         ElseIf (trafficCones.Size = 1) Then
-            txtInfo.AppendText("1 traffic cone was found" + vbCrLf + vbCrLf)
+            txtInfo.AppendText("1 traffic cone was found" + vbCrLf)
         ElseIf (trafficCones.Size > 1) Then
-            txtInfo.AppendText(trafficCones.Size.ToString() + " traffic cones were found" + vbCrLf + vbCrLf)
+            txtInfo.AppendText(trafficCones.Size.ToString() + " traffic cones were found" + vbCrLf)
         End If
     End Sub
 
@@ -95,11 +104,9 @@ Public Class frmMain
         Dim imgThresh As New Mat()
         Dim imgThreshSmoothed As New Mat()
         Dim imgCanny As New Mat()
-        Dim imgContours As Mat
-        Dim imgAllConvexHulls As Mat
-        Dim imgConvexHulls3To10 As Mat
-        Dim imgTrafficCones As Mat
-        Dim imgTrafficConesWithOverlapsRemoved As Mat
+        Dim imgContours As New Mat()
+        Dim imgAllConvexHulls As New Mat()
+        Dim imgTrafficCones As New Mat()
 
         'declare contours
         Dim contours As New VectorOfVectorOfPoint()
@@ -112,7 +119,7 @@ Public Class frmMain
         'threshold on low range of HSV red
         CvInvoke.InRange(imgHSV, New ScalarArray(New MCvScalar(0, 135, 135)), New ScalarArray(New MCvScalar(15, 255, 255)), imgThreshLow)
         'threshold on high range of HSV red
-        CvInvoke.InRange(imgHSV, New ScalarArray(New MCvScalar(159, 135, 135)), New ScalarArray(New MCvScalar(179, 255, 255)), imgThreshLow)
+        CvInvoke.InRange(imgHSV, New ScalarArray(New MCvScalar(159, 135, 135)), New ScalarArray(New MCvScalar(179, 255, 255)), imgThreshHigh)
         'combine (i.e. add) low and high thresh images
         CvInvoke.Add(imgThreshLow, imgThreshHigh, imgThresh)
         CvInvoke.Imshow("imgThresh", imgThresh)
@@ -138,12 +145,7 @@ Public Class frmMain
         
         'find convex hulls
         Dim allConvexHulls As New VectorOfVectorOfPoint()        
-        For i As Integer = 0 To contours.Size - 1
-            'Dim contour As VectorOfPoint = contours(i)            
-            'Dim contourAsPoints As Point() = contour.ToArray()
-            'Dim contourAsPointFs As PointF() = Array.ConvertAll(contourAsPoints, Function(point) New PointF(point.X, point.Y))            
-            'Dim convexHull As PointF() = CvInvoke.ConvexHull(contourAsPointFs)
-
+        For i As Integer = 0 To contours.Size - 1            
             Dim convexHull As New VectorOfPoint()
             CvInvoke.ConvexHull(contours(i), convexHull)
             allConvexHulls.Push(convexHull)
@@ -155,11 +157,68 @@ Public Class frmMain
         CvInvoke.Imshow("imgAllConvexHulls", imgAllConvexHulls)
         
         'loop through convex hulls, check if each is a traffic cone, add to vector of traffic cones if it is
+        For i As Integer = 0 To allConvexHulls.Size - 1
+            Dim currentConvexHull As VectorOfPoint = allConvexHulls(i)
+            If (isTrafficCone(currentConvexHull)) Then
+                trafficCones.Push(currentConvexHull)
+            End If
+        Next
 
-
-
-
+        'draw the traffic cone contours
+        imgTrafficCones = New Mat(imgOriginal.Size, DepthType.Cv8U, 3)
+        CvInvoke.DrawContours(imgTrafficCones, trafficCones, -1, SCALAR_WHITE)
+        CvInvoke.Imshow("imgTrafficCones", imgTrafficCones)
+        
         Return trafficCones
+    End Function
+
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    Private Function isTrafficCone(convexHull As VectorOfPoint) As Boolean
+
+        'first get dimensional information for the convex hull (bounding rect, bounding rect area, bounding rect aspect ratio, and y center
+        Dim boundingRect As Rectangle = CvInvoke.BoundingRectangle(convexHull)
+        Dim area As Integer = boundingRect.Width * boundingRect.Height
+        Dim aspectRatio As Double = CDbl(boundingRect.Width) / CDbl(boundingRect.Height)
+        Dim yCenter = boundingRect.Y + CInt(CDbl(boundingRect.Height) / 2.0)
+
+        'first do a gross dimensional check, return false if convex hull does not pass
+        If (area < MIN_PIXEL_AREA OrElse boundingRect.Width < MIN_PIXEL_WIDTH OrElse boundingRect.Height < MIN_PIXEL_HEIGHT OrElse aspectRatio > MAX_ASPECT_RATIO) Then
+            Return False
+        End If
+        
+        'now check if the convex Hull is pointing up
+
+        'declare and populate a vector of all points above the y center, and all points below the y center
+        Dim pointsAboveCenter As New List(Of Point)
+        Dim pointsBelowCenter As New List(Of Point)
+        For i As Integer = 0 To convexHull.Size - 1
+            Dim currentPoint As Point = convexHull(i)
+            If (currentPoint.Y < yCenter) Then
+                pointsAboveCenter.Add(currentPoint)
+            Else
+                pointsBelowCenter.Add(currentPoint)
+            End If
+        Next
+        
+        'find the left most point below the y center
+        Dim leftMostPointBelowCenter As Integer = pointsBelowCenter(0).X
+        For Each point As Point In pointsBelowCenter
+            If (point.X < leftMostPointBelowCenter) Then leftMostPointBelowCenter = point.X
+        Next
+
+        'find the right most point below the y center
+        Dim rightMostPointBelowCenter As Integer = pointsBelowCenter(0).X
+        For Each point As Point In pointsBelowCenter
+            If (point.X > rightMostPointBelowCenter) Then rightMostPointBelowCenter = point.X
+        Next
+
+        'step through all the points above the y center
+        For Each pointAboveCenter As Point In pointsAboveCenter
+            'if any point above the y center is farther left or right than the extreme left and right below y center points, then the convex hull is not pointing up, so return false            
+            If (pointAboveCenter.X <= leftMostPointBelowCenter OrElse pointAboveCenter.X >= rightMostPointBelowCenter) Then Return False
+        Next        
+        'if we get here, the convex hull has passed the gross dimensional check and the pointing up check, so we're convinced its a cone, so return true        
+        Return True
     End Function
 
     '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -175,10 +234,6 @@ Public Class frmMain
         'draw the small green circle
         CvInvoke.Circle(image, New Point(xCenter, yCenter), 3, SCALAR_GREEN, -1)        
     End Sub
-
-
-
-
 
 End Class
 
